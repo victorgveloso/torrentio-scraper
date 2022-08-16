@@ -10,6 +10,7 @@ const maxSearchPage = 50
 
 const baseUrl = 'https://adorocinema.com';
 
+// TODO: Update categories according AdoroCinema URI pattern
 const Categories = {
   MOVIE: 'filmes',
   TV: 'series',
@@ -75,6 +76,7 @@ function browse(config = {}, retries = 2) {
   }
   const page = config.page || 1;
   const category = config.category;
+  // TODO: Check whether requestURL is correct
   const requestUrl = category ? `${baseUrl}/${category}/${page}/` : `${baseUrl}/${page}/`;
 
   return singleRequest(requestUrl, config)
@@ -115,7 +117,7 @@ function parseTableBody(body) {
     }
 
     const torrents = [];
-
+    // TODO: Inject AdoroCinema's specificities into the code below 
     $('div.capa_larga.align-middle').each((i, element) => {
       const row = $(element);
       torrents.push({
@@ -141,6 +143,7 @@ function parseTorrentPage(body) {
     if (!$) {
       reject(new Error('Failed loading body'));
     }
+    // TODO: Inject AdoroCinema's specificities into the code below
     const magnets = $(`a[href^="magnet"]`)
         .filter((i, elem) => isPtDubbed($(elem).attr('title')))
         .map((i, elem) => $(elem).attr("href")).get();
@@ -169,18 +172,11 @@ function parseTorrentPage(body) {
 
 function parseCategory(body) {
   const $ = cheerio.load(body)
-  if ($("a[href*='anime']").text()) {
-    return Categories.ANIME
-  }
-  if ($("a[href*='series']").text()) {
-    return Categories.TV
-  }
-  if ($("a[href*='filmes']").text()) {
-    return Categories.MOVIE
-  }
-  if ($("a[href*='desenhos']").text()) {
-    return Categories.TV
-  }
+  for (const cat of Categories) {
+    if($(`a[href*='${cat}']`).text()) {
+      return cat;
+    }
+  };
 }
 
 module.exports = { torrent, search, browse, Categories };

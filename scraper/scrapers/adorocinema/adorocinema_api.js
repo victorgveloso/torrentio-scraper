@@ -85,6 +85,9 @@ function browse(config = {}, retries = 2) {
 }
 
 async function singleRequest(requestUrl, config = {}) {
+  if (config.mock) {
+    return config.mock;
+  }
   const timeout = config.timeout || defaultTimeout;
   const options = { headers: { 'User-Agent': getRandomUserAgent() }, timeout: timeout, withCredentials: false };
   let response = await axios.get(requestUrl, options);
@@ -113,14 +116,12 @@ function parseTableBody(body) {
     }
 
     const torrents = [];
-    // TODO: Inject AdoroCinema's specificities into the code below 
-    $('div.capa_larga.align-middle').each((i, element) => {
-      const row = $(element);
-      torrents.push({
-        name: row.find("a").text(),
-        torrentId: row.find("a").attr("href")
-      });
-    });
+    let moviesURL = $('#capas_pequenas > li > a')
+
+    moviesURL.each(function () {
+      let movieURL = $(this).attr('href');
+      torrents.push(movieURL)
+    })
     resolve(torrents);
   });
 }

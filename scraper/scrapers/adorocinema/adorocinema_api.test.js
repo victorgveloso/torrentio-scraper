@@ -3,7 +3,6 @@ const {
   torrent,
   search,
   browse,
-  Categories,
   parseTorrentPage
 } = require("./adorocinema_api");
 
@@ -81,5 +80,37 @@ it("search should find all sigle torrent pages whose title includes the specifie
   "https://adorocinematorrent.com/alien-todos-os-filmes-antologia-download/"];
   
   let result = await search(keyword);
+  expect(result).toEqual(expected_output);
+});
+  
+it("browse should fetch one page (summing up 20 torrents)", async () => {
+  let result = await browse();
+  expect(result.length).toEqual(20);
+});
+  
+it("browse should find all torrents in the frontpage", async () => {
+  let expected_output = ["https://adorocinematorrent.com/cacando-ava-bravo-download/",
+    "https://adorocinematorrent.com/365-dias-finais-download/",
+    "https://adorocinematorrent.com/cuphead-a-serie-2-temporada-download/",
+    "https://adorocinematorrent.com/alma-1-temporada-legendada-download/",
+    "https://adorocinematorrent.com/kleo-1-temporada-legendada-download/",
+    "https://adorocinematorrent.com/echoes-legendada-download/",
+    "https://adorocinematorrent.com/mulher-hulk-defensora-de-herois-1-temporada-download/",
+    "https://adorocinematorrent.com/o-atirador-missao-secreta-download/",
+    "https://adorocinematorrent.com/tekken-bloodline-1-temporada-completa-download/",
+    "https://adorocinematorrent.com/as-meninas-de-surfside-1-temporada-legendada-download/",
+    "https://adorocinematorrent.com/orfa-2-a-origem-legendado-download/",
+    "https://adorocinematorrent.com/sem-norte-download/",
+    "https://adorocinematorrent.com/royalteen-download/",
+    "https://adorocinematorrent.com/snoopy-apresenta-a-escola-da-lucy-download/",
+    "https://adorocinematorrent.com/pobre-familia-rica-quando-a-sorte-acaba-download/",
+    "https://adorocinematorrent.com/cinco-dias-no-hospital-memorial-legendada-download/",
+    "https://adorocinematorrent.com/mal-de-familia-1-temporada-legendada-download/",
+    "https://adorocinematorrent.com/trying-3-temporada-legendada-download/",
+    "https://adorocinematorrent.com/dentro-da-mente-de-um-gato-legendado-download/",
+    "https://adorocinematorrent.com/o-natal-dos-mitchell-2-a-competicao-download/"];
+  let page_content = await fs.readFile("frontpage_response_stub.html",options={encoding:"UTF-8"});
+  let result = await browse(config={mock: page_content});
+  expect(result.length).toEqual(20);
   expect(result).toEqual(expected_output);
 });

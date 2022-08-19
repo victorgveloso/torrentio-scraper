@@ -120,8 +120,9 @@ function parseTableBody(body) {
 
     moviesURL.each(function () {
       let movieURL = $(this).attr('href');
-      torrents.push(movieURL)
-    })
+      let name = $(this).attr('title');
+      torrents.push({name,torrentId:movieURL})
+    });
     resolve(torrents);
   });
 }

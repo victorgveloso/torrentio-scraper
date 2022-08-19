@@ -8,7 +8,7 @@ const { isPtDubbed, sanitizePtName, sanitizePtOriginalName, sanitizePtLanguages 
 const defaultTimeout = 30000;
 const maxSearchPage = 50
 
-const baseUrl = 'https://adorocinema.com';
+const baseUrl = 'https://adorocinematorrent.com';
 
 // TODO: Update categories according AdoroCinema URI pattern
 const Categories = {
@@ -26,18 +26,19 @@ const Categories = {
  * @param {number} retries Number of retries (default = 2) 
  * @returns Parse content detail page and extract all info available
  */
-function torrent(torrentId, config = {}, retries = 2) {
+async function torrent(torrentId, config = {}, retries = 2) {
   if (!torrentId || retries === 0) {
-    return Promise.reject(new Error(`Failed ${torrentId} query`));
+    throw new Error(`Failed ${torrentId} query`);
   }
   const slug = encodeURIComponent(torrentId.split("/")[3]);
-  return singleRequest(`${baseUrl}/${slug}/`, config)
-      .then((body) => parseTorrentPage(body))
-      .then((torrent) => torrent.map(el => ({ torrentId: slug, ...el })))
-      .catch((err) => {
-        console.warn(`Failed AdoroCinema ${slug} request: `, err);
-        return torrent(torrentId, config, retries - 1)
-      });
+  try {
+    let body = await singleRequest(`${baseUrl}/${slug}/`, config);
+    let torrent = await parseTorrentPage(body);
+    return torrent.map(el => ({ torrentId: slug, ...el }))
+  } catch (err) {
+    console.warn(`Failed AdoroCinema ${slug} request: `, err);
+    return torrent(torrentId, config, retries - 1);
+  }
 }
 
 /**
@@ -84,22 +85,18 @@ function browse(config = {}, retries = 2) {
       .catch((err) => browse(config, retries - 1));
 }
 
-function singleRequest(requestUrl, config = {}) {
+async function singleRequest(requestUrl, config = {}) {
   const timeout = config.timeout || defaultTimeout;
-  const options = { headers: { 'User-Agent': getRandomUserAgent() }, timeout: timeout };
-
-  return axios.get(requestUrl, options)
-      .then((response) => {
-        const body = response.data;
-        if (!body) {
-          throw new Error(`No body: ${requestUrl}`);
-        } else if (body.includes('502: Bad gateway') ||
-            body.includes('403 Forbidden')) {
-          throw new Error(`Invalid body contents: ${requestUrl}`);
-        }
-        return body;
-      })
-      .catch(error => Promise.reject(error.message || error));
+  const options = { headers: { 'User-Agent': getRandomUserAgent() }, timeout: timeout, withCredentials: false };
+  let response = await axios.get(requestUrl, options);
+  const body = response.data;
+  if (!body) {
+    throw new Error(`No body: ${requestUrl}`);
+  } else if (body.includes('502: Bad gateway') ||
+      body.includes('403 Forbidden')) {
+    throw new Error(`Invalid body contents: ${requestUrl}`);
+  }
+  return body;
 }
 
 /**
@@ -136,47 +133,44 @@ function parseTableBody(body) {
  * @param {string} body The page's source code
  * @returns All torrents' info found in the provided page
  */
-function parseTorrentPage(body) {
-  return new Promise((resolve, reject) => {
-    const $ = cheerio.load(body);
+async function parseTorrentPage(body) {
+  const $ = cheerio.load(body);
 
-    if (!$) {
-      reject(new Error('Failed loading body'));
+  if (!$) {
+    throw new Error('Failed loading body');
+  }
+  const magnets = $(`a[href^="magnet"]`)
+      .filter((i, elem) => isPtDubbed($(elem).attr('title')))
+      .map((i, elem) => $(elem).attr("href")).get();
+  const details = $('.info_nome');
+  const category = details.filter('span:contains(\'Gêneros: \')').next().html();
+  const torrents = magnets.map(magnetLink => {
+    const decodedMagnet = decode(magnetLink);
+    const name = sanitizePtName(escapeHTML(decodedMagnet.name || '').replace(/\+/g, ' '));
+    const originalTitle = details.filter('span:contains(\'Título: \')').next().text().trim();
+    const year = details.filter('span:contains(\'Lançamento: \')').next().text().trim();
+    const fallBackTitle = `${originalTitle.trim()} ${year.trim()} ${name.trim()}`;
+    return {
+      title: name.length > 5 ? name : fallBackTitle,
+      originalName: sanitizePtOriginalName(originalTitle),
+      year: year,
+      infoHash: decodedMagnet.infoHash,
+      magnetLink: magnetLink,
+      category: parseCategory(category),
+      uploadDate: new Date($('time').attr('datetime')),
+      languages: sanitizePtLanguages(details.filter('span:contains(\'Idioma\')').next().text())
     }
-    // TODO: Inject AdoroCinema's specificities into the code below
-    const magnets = $(`a[href^="magnet"]`)
-        .filter((i, elem) => isPtDubbed($(elem).attr('title')))
-        .map((i, elem) => $(elem).attr("href")).get();
-    const details = $('div#informacoes')
-    const category = details.find('span:contains(\'Gêneros: \')').next().html()
-    const torrents = magnets.map(magnetLink => {
-      const decodedMagnet = decode(magnetLink);
-      const name = sanitizePtName(escapeHTML(decodedMagnet.name || '').replace(/\+/g, ' '));
-      const originalTitle = details.find('span:contains(\'Título Original: \')').next().text().trim();
-      const year = details.find('span:contains(\'Ano de Lançamento: \')').next().text().trim();
-      const fallBackTitle = `${originalTitle.trim()} ${year.trim()} ${name.trim()}`;
-      return {
-        title: name.length > 5 ? name : fallBackTitle,
-        originalName: sanitizePtOriginalName(originalTitle),
-        year: year,
-        infoHash: decodedMagnet.infoHash,
-        magnetLink: magnetLink,
-        category: parseCategory(category),
-        uploadDate: new Date($('time').attr('datetime')),
-        languages: sanitizePtLanguages(details.find('span:contains(\'Idioma\')').next().text())
-      }
-    });
-    resolve(torrents.filter((x) => x));
   });
+  return torrents.filter((x) => x);
 }
 
 function parseCategory(body) {
-  const $ = cheerio.load(body)
-  for (const cat of Categories) {
-    if($(`a[href*='${cat}']`).text()) {
-      return cat;
+  const $ = cheerio.load(body);
+  for (const cat in Categories) {
+    if($(`a[href*='${Categories[cat]}']`).text()) {
+      return Categories[cat];
     }
   };
 }
 
-module.exports = { torrent, search, browse, Categories };
+module.exports = { parseTorrentPage, torrent, search, browse, Categories };

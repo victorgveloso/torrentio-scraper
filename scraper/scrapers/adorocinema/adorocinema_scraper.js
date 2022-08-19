@@ -31,23 +31,33 @@ async function updateSeeders(torrent) {
   return limiter.schedule(() => adorocinema.torrent(torrent.torrentId));
 }
 
-async function scrapeLatestTorrents() {
-  return scrapeLatestMovies();
-}
-async function scrapeLatestMovies(page = 1) {
-    const category = adorocinema.Categories.MOVIE;
-    console.log(`Scrapping ${NAME} ${category} category page ${page}`);
-    return adorocinema
-          .browse({category, page})
-          .catch((error) => {
-            console.warn(`Failed ${NAME} scrapping for [${page}] ${category} due: `, error);
-            return Promise.resolve([]);
-          })
-          .then((torrents) => Promise.all(torrents.map((torrent) => limiter.schedule(() => processEntry(torrent)))))
-          .then((resolved) => resolved.length > 0 && page < untilPage(category)
-                    ? scrapeLatestMovies(page + 1)
-                    : Promise.resolve());
 
+async function scrapeLatestTorrents() {
+  const allowedCategories = [
+    adorocinema.Categories.MOVIE,
+    adorocinema.Categories.TV,
+    adorocinema.Categories.DESENHOS
+  ];
+
+  return Promises.sequence(
+      allowedCategories.map(
+          (category) => () => scrapeLatestTorrentsForCategory(category)
+      )
+  ).then((entries) => entries.reduce((a, b) => a.concat(b), []));
+}
+
+async function scrapeLatestTorrentsForCategory(category, page = 1) {
+  console.log(`Scrapping ${NAME} ${category} category page ${page}`);
+  return adorocinema
+      .browse({ category, page })
+      .catch((error) => {
+        console.warn(`Failed ${NAME} scrapping for [${page}] ${category} due: `, error);
+        return Promise.resolve([]);
+      })
+      .then((torrents) => Promise.all(torrents.map((torrent) => limiter.schedule(() => processEntry(torrent)))))
+      .then((resolved) => resolved.length > 0 && page < untilPage(category)
+          ? scrapeLatestTorrentsForCategory(category, page + 1)
+          : Promise.resolve());
 }
 
 async function processEntry(entry) {

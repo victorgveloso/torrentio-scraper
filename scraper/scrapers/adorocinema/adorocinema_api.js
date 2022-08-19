@@ -10,7 +10,6 @@ const maxSearchPage = 50
 
 const baseUrl = 'https://adorocinematorrent.com';
 
-// TODO: Update categories according AdoroCinema URI pattern
 const Categories = {
   MOVIE: 'filmes',
   TV: 'series',

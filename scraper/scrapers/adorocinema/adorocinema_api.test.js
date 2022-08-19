@@ -26,7 +26,7 @@ it("parseTorrentPage should parse a valid single torrent page in HTML format", a
     "category": "filmes",
     "uploadDate": new Date("2022-08-18T08:59:48.000Z"),
     "languages": "Português / Inglês"
-  }]
+  }];
   let result = parseTorrentPage(await fs.readFile("api_response_stub.html"));
   expect(result).resolves.toEqual(expected_output);
 });
@@ -52,7 +52,34 @@ it("torrent should fetch and parse a single torrent page from a specified URL", 
     "torrentId": "o-predador-a-cacada-download",
     "uploadDate": new Date("2022-08-18T08:59:48.000Z"),
     "languages": "Português / Inglês"
-  }]
+  }];
   let result = await torrent("https://adorocinematorrent.com/o-predador-a-cacada-download/");
+  expect(result).toEqual(expected_output);
+});
+  
+it("search should find all sigle torrent pages whose title includes the specified keyword", async () => {
+  let keyword = "predador";
+  let expected_output = ["https://adorocinematorrent.com/o-predador-a-cacada-download/",
+  "https://adorocinematorrent.com/predadores-perigosos-os-mais-temidos-dos-oceanos-ocean-predators-download/",
+  "https://adorocinematorrent.com/alien-vs-predador-sem-cortes-download/",
+  "https://adorocinematorrent.com/alien-vs-predador-2-versao-estendida-download/",
+  "https://adorocinematorrent.com/alien-vs-predador-2-download/",
+  "https://adorocinematorrent.com/o-predador-trilogia-download/",
+  "https://adorocinematorrent.com/patient-zero-a-origem-do-virus-download/",
+  "https://adorocinematorrent.com/boa-vs-python-as-predadoras-download/",
+  "https://adorocinematorrent.com/instinto-predador-download/",
+  "https://adorocinematorrent.com/predadores-assassinos-blu-ray-download/",
+  "https://adorocinematorrent.com/o-predador-bluray-download/",
+  "https://adorocinematorrent.com/alien-a-ressurreicao-download/",
+  "https://adorocinematorrent.com/predadores-assassinos-bluray-download/",
+  "https://adorocinematorrent.com/predadores-assassinos-download/",
+  "https://adorocinematorrent.com/predadores-assassinos-legendado-web-dl-download/",
+  "https://adorocinematorrent.com/predadores-assassinos-legendado-download/",
+  "https://adorocinematorrent.com/predadores-assassinos-cam-legendado-download/",
+  "https://adorocinematorrent.com/predador-artico-download/",
+  "https://adorocinematorrent.com/predadores-perigosos-os-mais-temidos-dos-oceanos-download/",
+  "https://adorocinematorrent.com/alien-todos-os-filmes-antologia-download/"];
+  
+  let result = await search(keyword);
   expect(result).toEqual(expected_output);
 });

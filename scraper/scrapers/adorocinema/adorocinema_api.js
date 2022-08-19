@@ -77,7 +77,6 @@ function browse(config = {}, retries = 2) {
   }
   const page = config.page || 1;
   const category = config.category;
-  // TODO: Check whether requestURL is correct
   const requestUrl = category ? `${baseUrl}/${category}/${page}/` : `${baseUrl}/${page}/`;
 
   return singleRequest(requestUrl, config)
